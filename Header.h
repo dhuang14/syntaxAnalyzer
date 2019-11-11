@@ -1,0 +1,301 @@
+// Parser.cpp : This file contains the 'main' function. Program execution begins and ends there.
+//
+
+#include <iostream>
+#include <stack>
+#include <queue>
+#include <map>
+#include <string>
+
+using namespace std;
+
+/*
+GRAMMAR RULES
+
+1	S  -> id = E
+2	E  -> TE
+3	E' -> +TE
+4	E' -> -TE
+5	T  -> FT'
+6	T' -> *FT'
+7	T' -> /FT'
+8	F  -> (E)
+9	F  -> id
+10	all epsilon stuff using the follow()
+
+*/
+
+/*
+GRAMMAR TABLE
+
+	(	)	+	-	*	/	=	id	$
+S								1
+E	2							2
+E'		10	3	4					10
+T	5							5
+T'		10	10	10	6	7			10
+F	8							9
+*/
+
+/*
+	To add new grammar rules first update the enum terminal and nonterminals used inside the rule
+*/
+
+enum Symbols {
+	// the symbols:
+	// Terminal symbols:
+	TS_L_PARENS,	// (
+	TS_R_PARENS,	// )
+	TS_A,		// a
+	TS_B,		//b
+	TS_PLUS,	// +
+	TS_MIN,		// -
+	TS_MULT,	// *
+	TS_DIV,		// /
+	TS_EOS,		// $, in this case corresponds to '\0'
+	TS_INVALID,	// invalid token
+	TS_EQ,		// =
+	TS_EPS,		// epsilon
+	TS_ID,
+
+	// Non-terminal symbols:
+	NTS_S,		// S
+	NTS_F,		// F
+	NTS_E,		// E
+	NTS_EP,		// E'
+	NTS_T,		// T
+	NTS_TP,		// T'
+
+};
+
+/*
+	Add the character into the switch case and make it return its own enum/Terminal
+*/
+
+Symbols lexer(char c)
+{
+	//if(token is iden) then return TS_ID;
+	switch (c)
+	{
+	case '(':  return TS_L_PARENS;
+	case ')':  return TS_R_PARENS;
+	case 'a':  return TS_A;				// case(Id)
+	case 'b':  return TS_B;
+	case '+':  return TS_PLUS;
+	case '-':  return TS_MIN;
+	case '*':  return TS_MULT;
+	case '/':  return TS_DIV;
+	case '=':  return TS_EQ;
+	case '\0': return TS_EOS; // end of stack: the $ terminal symbol
+	default:   return TS_INVALID;
+	}
+}
+
+/*
+	print function that prints out the grammar rules used to define the inputs
+*/
+
+/*
+	add a cout to the new rule inside a new switch case
+*/
+
+void print(int rNum)
+{
+	switch (rNum)
+	{
+	case 1:
+		cout << "S -> b = S" << endl;
+		break;
+	case 2:
+		cout << "E -> TE'" << endl;
+		break;
+	case 3:
+		cout << "E' -> +TE'" << endl;
+		break;
+	case 4:
+		cout << "E' -> -TE'" << endl;
+		break;
+	case 5:
+		cout << "T -> FT'" << endl;
+		break;
+	case 6:
+		cout << "T' -> *FT'" << endl;
+		break;
+	case 7:
+		cout << "T' -> /FT'" << endl;
+		break;
+	case 8:
+		cout << "F -> (E)" << endl;
+		break;
+	case 9:
+		cout << "F -> a" << endl;				// need to change 'a' to an identifier
+		break;
+	}
+}
+
+/*
+Parser function takes in a char array and prints out the grammar rules used to define the statement
+*/
+
+void parser(char* state)
+{
+
+	// LL parser table, maps < non-terminal, terminal> pair to action	
+	map< Symbols, map<Symbols, int> > table;
+	stack<Symbols>	ss;	// symbol stack
+	const char* p;	// input buffer
+
+	// initialize the symbols stack
+	ss.push(TS_EOS);	// terminal, $
+	ss.push(NTS_S);		// non-terminal, S
+
+	// initialize the symbol stream cursor
+	p = state;
+
+	// set up the parsing table	
+	/*
+		update the table to the using the first[] for the nonterminal  and the second[] as the First() of the nonterminal
+		i.e. Rule T -> FT' table[NTS_T][TS_L_PARENS] = 5; and table[NTS_T][TS_A] = 5;
+	*/
+	table[NTS_S][TS_B] = 1;
+	table[NTS_E][TS_L_PARENS] = 2;
+	table[NTS_E][TS_A] = 2;					//change from TS_A to TS_ID
+	table[NTS_EP][TS_PLUS] = 3;
+	table[NTS_EP][TS_MIN] = 4;
+	table[NTS_EP][TS_EOS] = 10;
+	table[NTS_EP][TS_R_PARENS] = 10;
+	table[NTS_T][TS_L_PARENS] = 5;
+	table[NTS_T][TS_A] = 5;					//change from TS_A to TS_ID
+	table[NTS_TP][TS_MULT] = 6;
+	table[NTS_TP][TS_DIV] = 7;
+	table[NTS_TP][TS_PLUS] = 10;
+	table[NTS_TP][TS_MIN] = 10;
+	table[NTS_TP][TS_EOS] = 10;
+	table[NTS_TP][TS_R_PARENS] = 10;
+	table[NTS_F][TS_L_PARENS] = 8;
+	table[NTS_F][TS_A] = 9;				//change from TS_A to TS_ID
+
+	while (ss.size() > 0)
+	{
+		Symbols top = ss.top();
+
+		//checks the character input with the top of the stack 
+		if (lexer(*p) == top)
+		{
+			//if the character and the terminal match pop the terminal off the stack and move onto the next character
+			p++;
+			ss.pop();
+		}
+		else
+		{
+
+			/*
+				Add in the new rule to a new switch case and print out the rule number
+				always pop the stack and the push in the rule going from right to left
+				i.e. Rule T' -> *FT'
+				ss.pop(); ss.push(NTS_TP); ss.push(NTS_F); ss.push(TS_MULT);
+			*/
+			//if the character and top of the stack don't match then find the rule that would apply
+			switch (table[top][lexer(*p)])
+			{
+				//			RULE #1 <Statement> is the form <Identifier> = <Expression>/ S -> b = E
+			case 1:
+				print(1);
+				ss.pop();
+				ss.push(NTS_E);
+				ss.push(TS_EQ);
+				ss.push(TS_B);							//change from TS_B to TS_ID
+				break;
+
+				//			RULE #2 An <Expression> is <Term> followed by <Expression Prime>/ E -> TE'
+			case 2:
+				print(2);
+				ss.pop();
+				ss.push(NTS_EP);
+				ss.push(NTS_T);
+				break;
+
+				//			RULE #3 <Expression Prime> is <+> followed by <Term> then <Expression Prime>/ E' -> +TE'
+			case 3:
+				print(3);
+				ss.pop();
+				ss.push(NTS_EP);
+				ss.push(NTS_T);
+				ss.push(TS_PLUS);
+				break;
+
+				//			RULE #4 <Expression Prime> is <-> followed by <Term> then <Expression Prime>/ E' -> -TE'
+			case 4:
+				print(4);
+				ss.pop();
+				ss.push(NTS_EP);
+				ss.push(NTS_F);
+				ss.push(TS_MIN);
+				break;
+
+				//			RULE #5 <Term> is a <Factor> followed by a <Term Prime>/ T -> FT'
+			case 5:
+				print(5);
+				ss.pop();
+				ss.push(NTS_TP);
+				ss.push(NTS_F);
+				break;
+
+				//			RULE #6 <Term Prime> is <*> followed by <Factor> then <Term Prime>/ T' -> *FT'
+			case 6:
+				print(6);
+				ss.pop();
+				ss.push(NTS_TP);
+				ss.push(NTS_F);
+				ss.push(TS_MULT);
+				break;
+
+				//			RULE #7 <Term Prime> is </> followed by <Factor> then <Term Prime>/ T' -> /FT'
+			case 7:
+				print(7);
+				ss.pop();
+				ss.push(NTS_TP);
+				ss.push(NTS_F);
+				ss.push(TS_DIV);
+				break;
+
+				//			RULE #8 <Factor> is <(> followed by <Expression> then <)>
+			case 8: // 9. F -> (E)
+				print(8);
+				ss.pop();
+				ss.push(TS_R_PARENS);
+				ss.push(NTS_E);
+				ss.push(TS_L_PARENS);
+				break;
+
+				//			RULE #9 <Factor> can be an <Id>
+			case 9: // 9. F -> a
+				print(9);
+				ss.pop();
+				ss.push(TS_A);					//change from TS_A to TS_ID
+				break;
+
+				//			RULE #10 handles all epsilon rules and pops the stack
+			case 10:
+				ss.pop();
+				break;
+
+			default:
+				cout << "parsing table defaulted" << endl;
+				break;
+			}
+		}
+	}
+
+	cout << "finished parsing" << endl;
+
+}
+
+/*
+int main()
+{
+	string test = "b=a*(a-a)";
+	char* tmp = &test[0];
+	parser(tmp);
+}
+*/
