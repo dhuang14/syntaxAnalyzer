@@ -1,6 +1,8 @@
 // Parser.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
+#ifndef _HEADER_
+#define _HEADER_
 #include <iostream>
 #include <stack>
 #include <queue>
@@ -299,3 +301,4 @@ int main()
 	parser(tmp);
 }
 */
+#endif
