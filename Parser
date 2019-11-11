@@ -12,16 +12,17 @@ using namespace std;
 /*
 GRAMMAR RULES
 
-1	E  -> TE
-2	E' -> +TE
-3	E' -> -TE
-4	E' -> epsilon
+1	S  -> id = E
+2	E  -> TE
+3	E' -> +TE
+4	E' -> -TE
 5	T  -> FT'
 6	T' -> *FT'
 7	T' -> /FT'
-8	T' -> epsilon
-9	F  -> (E)
-10	F  -> id
+8	F  -> (E)
+9	F  -> id
+10	all epsilon stuff using the follow()
+
 */
 
 /*
