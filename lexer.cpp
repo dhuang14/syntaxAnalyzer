@@ -190,7 +190,13 @@ int main(int argc, const char* argv[])
 	}
 	else {}
 
-	lexer(Extract(readInFile()));														/* Calling FSM function and starting selection process */
+	string holder = readInFile();
+
+	lexer(Extract(holder)); 															/* Calling FSM function and starting selection process */
+	
+	char* tmp = &holder[0];
+	parser(tmp);
+
 	cout << "\nPlease press \"Enter\" to exit the program.\nThank you.\n";				/* Output an exiting program instruction --------------*/
 	cin.get(), cin.get();																/* Waiting for a keystroke (Enter) to exit the program */
 	return 0;
