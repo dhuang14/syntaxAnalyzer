@@ -43,6 +43,7 @@ void writeFile(string, string);			/* Function to output results into a text file
 string outfileName;						/* Global variable for output file name ----------------------------------------*/
 char decision;							/* Global variable for save text file decision ---------------------------------*/
 
+queue<Pair> tkn;
 
 /* --------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                                   FUNCTIONS AND CODES START HERE                                                            */
@@ -145,6 +146,10 @@ string readInFile()
 void writeFile(string token, string lexeme)
 {
 	ofstream outFile;
+	Pair tmp;
+	tmp.token = token;
+	tmp.lexeme = lexeme;
+	tkn.push(tmp);
 
 	cout << token << "   |  " << lexeme << "\n";										/* Console output of each token and lexeme ------------*/
 	outFile.open(outfileName, ios::app);												/* Open output text file and append to existing data --*/
@@ -194,8 +199,11 @@ int main(int argc, const char* argv[])
 
 	lexer(Extract(holder)); 															/* Calling FSM function and starting selection process */
 	
-	char* tmp = &holder[0];
-	parser(tmp);
+	Pair eos;
+	eos.token = "$";
+	eos.lexeme = '\0';
+	tkn.push(eos);
+	parser(tkn);
 
 	cout << "\nPlease press \"Enter\" to exit the program.\nThank you.\n";				/* Output an exiting program instruction --------------*/
 	cin.get(), cin.get();																/* Waiting for a keystroke (Enter) to exit the program */
