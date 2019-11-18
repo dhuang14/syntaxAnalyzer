@@ -11,6 +11,13 @@
 
 using namespace std;
 
+
+struct Pair
+{
+	string token;
+	string lexeme;
+};
+
 /*
 GRAMMAR RULES
 
@@ -59,6 +66,7 @@ enum Symbols {
 	TS_EQ,		// =
 	TS_EPS,		// epsilon
 	TS_ID,
+	TS_SPACE,
 
 	// Non-terminal symbols:
 	NTS_S,		// S
@@ -74,10 +82,10 @@ enum Symbols {
 	Add the character into the switch case and make it return its own enum/Terminal
 */
 
-Symbols lexer(char c)
+Symbols lexer(Pair c)
 {
 	//if(token is iden) then return TS_ID;
-	switch (c)
+	/*switch (c)
 	{
 	case '(':  return TS_L_PARENS;
 	case ')':  return TS_R_PARENS;
@@ -89,7 +97,27 @@ Symbols lexer(char c)
 	case '/':  return TS_DIV;
 	case '=':  return TS_EQ;
 	case '\0': return TS_EOS; // end of stack: the $ terminal symbol
+	case ' ':  return TS_SPACE;
 	default:   return TS_INVALID;
+	}*/
+
+	if (c.token.compare("Identifier") == 0)
+		return TS_ID;
+	else if (c.token.compare("$") == 0)
+		return TS_EOS;
+	else
+	{
+		switch (c.lexeme.at(0))
+		{
+		case '(':  return TS_L_PARENS;
+		case ')':  return TS_R_PARENS;
+		case '+':  return TS_PLUS;
+		case '-':  return TS_MIN;
+		case '*':  return TS_MULT;
+		case '/':  return TS_DIV;
+		case '=':  return TS_EQ;
+		default: return TS_INVALID;
+		}
 	}
 }
 
@@ -106,7 +134,7 @@ void print(int rNum)
 	switch (rNum)
 	{
 	case 1:
-		cout << "S -> b = S" << endl;
+		cout << "S -> id = S" << endl;
 		break;
 	case 2:
 		cout << "E -> TE'" << endl;
@@ -130,7 +158,7 @@ void print(int rNum)
 		cout << "F -> (E)" << endl;
 		break;
 	case 9:
-		cout << "F -> a" << endl;				// need to change 'a' to an identifier
+		cout << "F -> id" << endl;				// need to change 'a' to an identifier
 		break;
 	}
 }
@@ -139,7 +167,7 @@ void print(int rNum)
 Parser function takes in a char array and prints out the grammar rules used to define the statement
 */
 
-void parser(char* state)
+void parser(queue<Pair> v)
 {
 
 	// LL parser table, maps < non-terminal, terminal> pair to action	
@@ -152,40 +180,55 @@ void parser(char* state)
 	ss.push(NTS_S);		// non-terminal, S
 
 	// initialize the symbol stream cursor
-	p = state;
+	//p = state;
+	int count = 0;
 
 	// set up the parsing table	
 	/*
 		update the table to the using the first[] for the nonterminal  and the second[] as the First() of the nonterminal
 		i.e. Rule T -> FT' table[NTS_T][TS_L_PARENS] = 5; and table[NTS_T][TS_A] = 5;
 	*/
-	table[NTS_S][TS_B] = 1;
+	table[NTS_S][TS_ID] = 1;
+	table[NTS_S][TS_SPACE] = 11;
 	table[NTS_E][TS_L_PARENS] = 2;
-	table[NTS_E][TS_A] = 2;					//change from TS_A to TS_ID
+	table[NTS_E][TS_ID] = 2;					//change from TS_A to TS_ID
+	table[NTS_E][TS_SPACE] = 11;
 	table[NTS_EP][TS_PLUS] = 3;
 	table[NTS_EP][TS_MIN] = 4;
 	table[NTS_EP][TS_EOS] = 10;
 	table[NTS_EP][TS_R_PARENS] = 10;
+	table[NTS_EP][TS_SPACE] = 11;
 	table[NTS_T][TS_L_PARENS] = 5;
-	table[NTS_T][TS_A] = 5;					//change from TS_A to TS_ID
+	table[NTS_T][TS_ID] = 5;					//change from TS_A to TS_ID
+	table[NTS_T][TS_SPACE] = 11;
 	table[NTS_TP][TS_MULT] = 6;
 	table[NTS_TP][TS_DIV] = 7;
 	table[NTS_TP][TS_PLUS] = 10;
 	table[NTS_TP][TS_MIN] = 10;
 	table[NTS_TP][TS_EOS] = 10;
 	table[NTS_TP][TS_R_PARENS] = 10;
+	table[NTS_TP][TS_SPACE] = 11;
 	table[NTS_F][TS_L_PARENS] = 8;
-	table[NTS_F][TS_A] = 9;				//change from TS_A to TS_ID
+	table[NTS_F][TS_ID] = 9;				//change from TS_A to TS_ID
+	table[NTS_F][TS_SPACE] = 11;
+	table[TS_EQ][TS_SPACE] = 11;
+	table[TS_L_PARENS][TS_SPACE] = 11;
+	table[TS_R_PARENS][TS_SPACE] = 11;
+	table[TS_PLUS][TS_SPACE] = 11;
+	table[TS_MIN][TS_SPACE] = 11;
+	table[TS_MULT][TS_SPACE] = 11;
+	table[TS_DIV][TS_SPACE] = 11;
 
 	while (ss.size() > 0)
 	{
 		Symbols top = ss.top();
 
 		//checks the character input with the top of the stack 
-		if (lexer(*p) == top)
+		if (lexer(v.front()) == top)
 		{
 			//if the character and the terminal match pop the terminal off the stack and move onto the next character
-			p++;
+			count++;
+			v.pop();
 			ss.pop();
 		}
 		else
@@ -198,7 +241,7 @@ void parser(char* state)
 				ss.pop(); ss.push(NTS_TP); ss.push(NTS_F); ss.push(TS_MULT);
 			*/
 			//if the character and top of the stack don't match then find the rule that would apply
-			switch (table[top][lexer(*p)])
+			switch (table[top][lexer(v.front())])
 			{
 				//			RULE #1 <Statement> is the form <Identifier> = <Expression>/ S -> b = E
 			case 1:
@@ -206,7 +249,7 @@ void parser(char* state)
 				ss.pop();
 				ss.push(NTS_E);
 				ss.push(TS_EQ);
-				ss.push(TS_B);							//change from TS_B to TS_ID
+				ss.push(TS_ID);							//change from TS_B to TS_ID
 				break;
 
 				//			RULE #2 An <Expression> is <Term> followed by <Expression Prime>/ E -> TE'
@@ -274,12 +317,16 @@ void parser(char* state)
 			case 9: // 9. F -> a
 				print(9);
 				ss.pop();
-				ss.push(TS_A);					//change from TS_A to TS_ID
+				ss.push(TS_ID);					//change from TS_A to TS_ID
 				break;
 
 				//			RULE #10 handles all epsilon rules and pops the stack
 			case 10:
 				ss.pop();
+				break;
+
+			case 11:
+				count++;
 				break;
 
 			default:
